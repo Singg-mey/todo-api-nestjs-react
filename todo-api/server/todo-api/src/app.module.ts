@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import jwtConfig from './auth/config/jwt.config.js';
 import { TodosModule } from './todos/todos.module.js';
 import { ProfileController } from './profile/profile.controller.js';
 import { UsersModule } from './users/users.module.js';
@@ -13,6 +15,11 @@ import { AppService } from './app.service.js';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [jwtConfig],
+      envFilePath: ['.env'],
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',

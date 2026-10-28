@@ -1,17 +1,88 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import type { Response } from 'express';
 import { UsersService } from '../users/users.service.js';
 import { SignupDto } from './dto/signup.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import {
+  AccessTokenPayload,
+  RefreshTokenPayload,
+  TokenType,
+  TokensResponse,
+} from './types/token.types.js';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private getAccessSecret(): string {
+    const secret =
+      this.configService.get<string>('jwt.accessSecret') ||
+      this.configService.get<string>('JWT_ACCESS_SECRET') ||
+      this.configService.get<string>('JWT_SECRET');
+
+    if (!secret) {
+      throw new Error('JWT_ACCESS_SECRET configuration is required');
+    }
+    return secret;
+  }
+
+  private getRefreshSecret(): string {
+    const secret =
+      this.configService.get<string>('jwt.refreshSecret') ||
+      this.configService.get<string>('JWT_REFRESH_SECRET');
+
+    if (!secret) {
+      throw new Error('JWT_REFRESH_SECRET configuration is required');
+    }
+    return secret;
+  }
+
+  private async generateTokens(user: { id: number; email: string; role: string }) {
+    const accessPayload: AccessTokenPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      type: TokenType.ACCESS,
+    };
+
+    const refreshPayload: RefreshTokenPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      type: TokenType.REFRESH,
+    };
+
+    const accessSecret = this.getAccessSecret();
+    const refreshSecret = this.getRefreshSecret();
+    const accessExpiresIn =
+      this.configService.get<string>('jwt.accessExpiresIn') ||
+      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ||
+      '15m';
+    const refreshExpiresIn =
+      this.configService.get<string>('jwt.refreshExpiresIn') ||
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ||
+      '7d';
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(accessPayload, {
+        secret: accessSecret,
+        expiresIn: accessExpiresIn as any,
+      }),
+      this.jwtService.signAsync(refreshPayload, {
+        secret: refreshSecret,
+        expiresIn: refreshExpiresIn as any,
+      }),
+    ]);
+
+    return { accessToken, refreshToken };
+  }
 
   async signup(dto: SignupDto) {
     const existing = await this.usersService.findByEmail(dto.email);
@@ -43,7 +114,7 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto, res: Response) {
+  async login(dto: LoginDto, res: Response): Promise<TokensResponse> {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
@@ -54,9 +125,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
-    const accessToken = await this.jwtService.signAsync(payload, { expiresIn: '15m' });
-    const refreshToken = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
+    const { accessToken, refreshToken } = await this.generateTokens(user);
 
     // Store hashed refresh token for rotation
     const hashedRefreshToken = await argon2.hash(refreshToken);
@@ -82,16 +151,23 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken: string | undefined, res: Response) {
+  async refresh(refreshToken: string | undefined, res: Response): Promise<TokensResponse> {
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token is required');
     }
 
-    let payload: any;
+    const refreshSecret = this.getRefreshSecret();
+    let payload: RefreshTokenPayload;
     try {
-      payload = await this.jwtService.verifyAsync(refreshToken);
+      payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(refreshToken, {
+        secret: refreshSecret,
+      });
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (payload.type !== TokenType.REFRESH) {
+      throw new UnauthorizedException('Invalid token type');
     }
 
     const user = await this.usersService.findById(payload.sub);
@@ -108,9 +184,8 @@ export class AuthService {
     }
 
     // Token rotation
-    const newPayload = { sub: user.id, email: user.email, role: user.role };
-    const newAccessToken = await this.jwtService.signAsync(newPayload, { expiresIn: '15m' });
-    const newRefreshToken = await this.jwtService.signAsync(newPayload, { expiresIn: '7d' });
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+      await this.generateTokens(user);
 
     const newHashedRefreshToken = await argon2.hash(newRefreshToken);
     await this.usersService.updateRefreshToken(user.id, newHashedRefreshToken);

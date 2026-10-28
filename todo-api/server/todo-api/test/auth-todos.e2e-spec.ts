@@ -228,6 +228,21 @@ describe('Six Implementation Steps & Stretch E2E Test', () => {
       expect(cookies).toBeDefined();
     });
 
+    it('Security: Refresh token passed as Bearer token must be rejected by JwtStrategy (separate secret & type)', async () => {
+      const rawRefreshToken = user1RefreshTokenCookie.replace('refreshToken=', '');
+      await request(app.getHttpServer())
+        .get('/api/todos')
+        .set('Authorization', `Bearer ${rawRefreshToken}`)
+        .expect(401);
+    });
+
+    it('Security: Access token passed as refresh cookie must be rejected by /auth/refresh (separate secret & type)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', `refreshToken=${user1Token}`)
+        .expect(401);
+    });
+
     it('Standard user (User 1) GET /api/admin/todos should return 403 Forbidden', async () => {
       await request(app.getHttpServer())
         .get('/api/admin/todos')
