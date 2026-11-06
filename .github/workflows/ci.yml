@@ -2,9 +2,9 @@ name: CI Pipeline - Todo API
 
 on:
   push:
-    branches: [main, master, feat/*, feature/*]
+    branches: ['**']
   pull_request:
-    branches: [main, master]
+    branches: ['**']
 
 jobs:
   test:
@@ -16,21 +16,26 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgrespassword
-          POSTGRES_DB: todo_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: todo
         ports:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
-          --health-interval 10s
+          --health-interval 5s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
       rabbitmq:
         image: rabbitmq:3-management-alpine
         ports:
           - 5672:5672
           - 15672:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout code
@@ -40,12 +45,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          cache-dependency-path: server/todo-api/package-lock.json
 
       - name: Install dependencies
         working-directory: server/todo-api
-        run: npm ci
+        run: npm install
 
       - name: Build project
         working-directory: server/todo-api
@@ -61,9 +64,11 @@ jobs:
           DB_HOST: localhost
           DB_PORT: 5432
           DB_USERNAME: postgres
-          DB_PASSWORD: postgrespassword
-          DB_NAME: todo_test
+          DB_PASSWORD: postgres
+          DB_NAME: todo
           RABBITMQ_URL: amqp://guest:guest@localhost:5672
           JWT_ACCESS_SECRET: test-jwt-access-secret-32-chars-long
           JWT_REFRESH_SECRET: test-jwt-refresh-secret-32-chars-long
         run: npm run test:e2e
+
+

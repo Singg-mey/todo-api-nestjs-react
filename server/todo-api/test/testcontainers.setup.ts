@@ -47,3 +47,4 @@ export async function stopContainers() {
     rabbitContainer = null;
   }
 }
+
