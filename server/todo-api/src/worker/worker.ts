@@ -1,4 +1,5 @@
-import amqplib, { Channel, ChannelModel, ConsumeMessage } from 'amqplib';
+import amqplib from 'amqplib';
+import type { Channel, ChannelModel, ConsumeMessage } from 'amqplib';
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
 const QUEUE_NAME = process.env.EMAIL_QUEUE || 'email_queue';
