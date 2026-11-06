@@ -178,3 +178,4 @@ async function startWorker() {
 startWorker().catch((err) => {
   console.error('Fatal worker error:', err);
 });
+

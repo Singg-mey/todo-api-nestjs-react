@@ -118,3 +118,4 @@ export default function ActivityFeed({ refreshTrigger }) {
     </div>
   );
 }
+

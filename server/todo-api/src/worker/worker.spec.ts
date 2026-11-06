@@ -79,3 +79,4 @@ describe('Worker Unit Tests (Core 04 & Stretch S1/S2)', () => {
     expect(mockChannel.ack).toHaveBeenCalledWith(failedMsg);
   });
 });
+

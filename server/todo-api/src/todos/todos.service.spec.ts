@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TodosService } from './todos.service.js';
 import { Todo } from './entities/todo.entity.js';
+import { RabbitmqService } from '../rabbitmq/rabbitmq.service.js';
 
 describe('TodosService', () => {
   let service: TodosService;
@@ -18,6 +20,19 @@ describe('TodosService', () => {
             save: vi.fn(),
             create: vi.fn(),
             remove: vi.fn(),
+          },
+        },
+        {
+          provide: EventEmitter2,
+          useValue: {
+            emit: vi.fn(),
+          },
+        },
+        {
+          provide: RabbitmqService,
+          useValue: {
+            publishTopic: vi.fn(),
+            publishEmailJob: vi.fn(),
           },
         },
       ],
