@@ -1,9 +1,10 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import type { Response } from 'express';
 import { UsersService } from '../users/users.service.js';
+import { RabbitmqService } from '../rabbitmq/rabbitmq.service.js';
 import { SignupDto } from './dto/signup.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import {
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    @Optional() private readonly rabbitmqService?: RabbitmqService,
   ) {}
 
   private getAccessSecret(): string {
@@ -99,6 +101,17 @@ export class AuthService {
         name: dto.name || dto.email.split('@')[0],
         role: dto.role || 'user',
       });
+
+      // Emit persistent user.registered to email_queue (non-blocking: returns at once)
+      if (this.rabbitmqService) {
+        this.rabbitmqService
+          .publishUserRegistered({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          })
+          .catch(() => {});
+      }
 
       return {
         id: user.id,
