@@ -1,0 +1,357 @@
+{
+  "info": {
+    "_postman_id": "c8a419f7-6425-4c07-b2e4-9da9a5728461",
+    "name": "Todo API - Complete Flow & Auth / Cross-User",
+    "description": "Postman Collection covering complete authenticated flow and cross-user isolation (Alice vs Bob).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Unauthenticated Create Todo (Expect 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 401 Unauthorized', function () {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Unauthenticated Task\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/todos",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "todos"]
+        }
+      }
+    },
+    {
+      "name": "02 - Signup Alice",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const randomId = Date.now();",
+              "pm.environment.set('aliceEmail', `alice_${randomId}@example.com`);",
+              "pm.environment.set('userPassword', 'Password123!');"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Alice user created with id and email', function () {",
+              "    pm.expect(json.id).to.be.a('number');",
+              "    pm.expect(json.email).to.eql(pm.environment.get('aliceEmail'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{aliceEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"name\": \"Alice\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/signup",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "signup"]
+        }
+      }
+    },
+    {
+      "name": "03 - Login Alice",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Access token returned', function () {",
+              "    pm.expect(json.accessToken).to.be.a('string');",
+              "    pm.environment.set('aliceToken', json.accessToken);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{aliceEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "04 - Alice Creates Todo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Todo returned with id and title', function () {",
+              "    pm.expect(json.id).to.be.a('number');",
+              "    pm.expect(json.title).to.eql('Alice Private Todo');",
+              "    pm.environment.set('aliceTodoId', json.id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{aliceToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Alice Private Todo\",\n  \"status\": \"TODO\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/todos",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "todos"]
+        }
+      }
+    },
+    {
+      "name": "05 - Alice Reads Back Her Todo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Returned correct todo', function () {",
+              "    pm.expect(json.id).to.eql(pm.environment.get('aliceTodoId'));",
+              "    pm.expect(json.title).to.eql('Alice Private Todo');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{aliceToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/todos/{{aliceTodoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "todos", "{{aliceTodoId}}"]
+        }
+      }
+    },
+    {
+      "name": "06 - Signup Bob",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const randomId = Date.now() + 1;",
+              "pm.environment.set('bobEmail', `bob_${randomId}@example.com`);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{bobEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"name\": \"Bob\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/signup",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "signup"]
+        }
+      }
+    },
+    {
+      "name": "07 - Login Bob",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test('Bob Access token returned', function () {",
+              "    pm.expect(json.accessToken).to.be.a('string');",
+              "    pm.environment.set('bobToken', json.accessToken);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{bobEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "08 - Bob Cross-User READ Alice's Todo (Expect 404 BOLA)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404 Not Found (BOLA protection)', function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{bobToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/todos/{{aliceTodoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "todos", "{{aliceTodoId}}"]
+        }
+      }
+    },
+    {
+      "name": "09 - Bob Cross-User UPDATE Alice's Todo (Expect 404 BOLA)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404 Not Found (BOLA protection)', function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{bobToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Bob Hacked Alice Todo\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/todos/{{aliceTodoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "todos", "{{aliceTodoId}}"]
+        }
+      }
+    },
+    {
+      "name": "10 - Bob Cross-User DELETE Alice's Todo (Expect 404 BOLA)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404 Not Found (BOLA protection)', function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{bobToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/todos/{{aliceTodoId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "todos", "{{aliceTodoId}}"]
+        }
+      }
+    }
+  ]
+}
