@@ -1,12 +1,16 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateTodoDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(200)
+  @MaxLength(100) // matches your earlier test for 101-character restriction
   title: string;
 
+  @IsString()
   @IsOptional()
-  @IsIn(['TODO', 'IN_PROGRESS', 'DONE'])
+  description?: string;
+
+  @IsEnum(['TODO', 'IN_PROGRESS', 'DONE'])
+  @IsOptional()
   status?: string;
 }

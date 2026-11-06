@@ -44,13 +44,13 @@ export class CreateUserAndAddOwnerIdToTodo1710000000000 implements MigrationInte
       );
     }
 
-    // 2. Add ownerId to todo table if it exists
-    const hasTodoTable = await queryRunner.hasTable('todo');
+    // 2. Add ownerId to todos table if it exists (Changed 'todo' to 'todos')
+    const hasTodoTable = await queryRunner.hasTable('todos');
     if (hasTodoTable) {
-      const hasColumn = await queryRunner.hasColumn('todo', 'ownerId');
+      const hasColumn = await queryRunner.hasColumn('todos', 'ownerId');
       if (!hasColumn) {
         await queryRunner.addColumn(
-          'todo',
+          'todos',
           new TableColumn({
             name: 'ownerId',
             type: 'integer',
@@ -60,7 +60,7 @@ export class CreateUserAndAddOwnerIdToTodo1710000000000 implements MigrationInte
       }
 
       await queryRunner.createForeignKey(
-        'todo',
+        'todos',
         new TableForeignKey({
           columnNames: ['ownerId'],
           referencedColumnNames: ['id'],
@@ -72,17 +72,17 @@ export class CreateUserAndAddOwnerIdToTodo1710000000000 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const hasTodoTable = await queryRunner.hasTable('todo');
+    const hasTodoTable = await queryRunner.hasTable('todos');
     if (hasTodoTable) {
-      const table = await queryRunner.getTable('todo');
+      const table = await queryRunner.getTable('todos');
       const foreignKey = table?.foreignKeys.find(
         (fk) => fk.columnNames.indexOf('ownerId') !== -1,
       );
       if (foreignKey) {
-        await queryRunner.dropForeignKey('todo', foreignKey);
+        await queryRunner.dropForeignKey('todos', foreignKey);
       }
-      if (await queryRunner.hasColumn('todo', 'ownerId')) {
-        await queryRunner.dropColumn('todo', 'ownerId');
+      if (await queryRunner.hasColumn('todos', 'ownerId')) {
+        await queryRunner.dropColumn('todos', 'ownerId');
       }
     }
     if (await queryRunner.hasTable('users')) {

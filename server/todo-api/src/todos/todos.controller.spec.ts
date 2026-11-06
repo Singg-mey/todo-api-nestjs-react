@@ -1,31 +1,52 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { TodosController } from './todos.controller.js';
-import { TodosService } from './todos.service.js';
+import { ArgumentMetadata, BadRequestException, ValidationPipe } from '@nestjs/common';
+import { CreateTodoDto } from './dto/create-todo.dto.js';
+import { describe, it, expect } from 'vitest';
 
-describe('TodosController', () => {
-  let controller: TodosController;
+describe('TodosController (validation - Exercise 02)', () => {
+  const target = new ValidationPipe({ transform: true, whitelist: true });
+  const metadata: ArgumentMetadata = {
+    type: 'body',
+    metatype: CreateTodoDto,
+    data: '',
+  };
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [TodosController],
-      providers: [
-        {
-          provide: TodosService,
-          useValue: {
-            findAll: vi.fn(),
-            findOne: vi.fn(),
-            create: vi.fn(),
-            update: vi.fn(),
-            remove: vi.fn(),
-          },
-        },
-      ],
-    }).compile();
-
-    controller = module.get<TodosController>(TodosController);
+  it('rejects missing title (400)', async () => {
+    try {
+      await target.transform({ description: 'desc' }, metadata);
+      expect.fail('Should have thrown');
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect(err.getStatus()).toBe(400);
+      expect(err.getResponse().message).toEqual(
+        expect.arrayContaining([expect.stringContaining('title')]),
+      );
+    }
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  it('rejects empty title (400)', async () => {
+    try {
+      await target.transform({ title: '', description: 'desc' }, metadata);
+      expect.fail('Should have thrown');
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect(err.getStatus()).toBe(400);
+      expect(err.getResponse().message).toEqual(
+        expect.arrayContaining([expect.stringContaining('title should not be empty')]),
+      );
+    }
+  });
+
+  it('rejects 101‑character title (400)', async () => {
+    const longTitle = 'a'.repeat(101);
+    try {
+      await target.transform({ title: longTitle, description: 'desc' }, metadata);
+      expect.fail('Should have thrown');
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect(err.getStatus()).toBe(400);
+      expect(err.getResponse().message).toEqual(
+        expect.arrayContaining([expect.stringContaining('title must be shorter than or equal to 100 characters')]),
+      );
+    }
   });
 });

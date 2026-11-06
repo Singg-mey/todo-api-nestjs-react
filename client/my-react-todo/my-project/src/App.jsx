@@ -3,6 +3,7 @@ import Profile from './components/Profile'
 import TaskCard from './components/TaskCard'
 import AuthModal from './components/AuthModal'
 import AdminTodos from './components/AdminTodos'
+import ActivityFeed from './components/ActivityFeed'
 import api, { setAuthToken, getAuthToken } from './api/axios.js'
 
 const FILTERS = ['All', 'To Do', 'In Progress', 'Done']
@@ -24,6 +25,7 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState([])
   const [dragId, setDragId] = useState(null)
+  const [activityRefresh, setActivityRefresh] = useState(0)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -120,6 +122,7 @@ export default function App() {
       if (res.data) {
         setTasks((prev) => [...prev, { ...res.data, status: toUiStatus(res.data.status) }])
         setInput('')
+        setActivityRefresh((r) => r + 1)
       }
     } catch (err) {
       console.error('Failed to add task:', err)
@@ -136,6 +139,7 @@ export default function App() {
     if (Object.keys(payload).length > 0) {
       try {
         await api.patch(`/todos/${id}`, payload)
+        setActivityRefresh((r) => r + 1)
       } catch (err) {
         console.error('Failed to update task:', err)
       }
@@ -148,6 +152,7 @@ export default function App() {
     setSelected((prev) => prev.filter((s) => s !== id))
     try {
       await api.delete(`/todos/${id}`)
+      setActivityRefresh((r) => r + 1)
     } catch (err) {
       console.error('Failed to delete task:', err)
     }
@@ -400,6 +405,13 @@ export default function App() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Real-time Activity Feed (Core 01) */}
+      {user && (
+        <div className="w-full max-w-xl">
+          <ActivityFeed refreshTrigger={activityRefresh} />
         </div>
       )}
     </div>

@@ -2,12 +2,16 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import jwtConfig from './auth/config/jwt.config.js';
 import { TodosModule } from './todos/todos.module.js';
 import { ProfileController } from './profile/profile.controller.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AdminModule } from './admin/admin.module.js';
+import { ActivityModule } from './activity/activity.module.js';
+import { RabbitmqModule } from './rabbitmq/rabbitmq.module.js';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
 
 import { AppController } from './app.controller.js';
@@ -30,10 +34,14 @@ import { AppService } from './app.service.js';
       autoLoadEntities: true,
       synchronize: true,
     }),
+    EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     UsersModule,
     AuthModule,
     TodosModule,
     AdminModule,
+    ActivityModule,
+    RabbitmqModule,
   ],
   controllers: [AppController, ProfileController],
   providers: [

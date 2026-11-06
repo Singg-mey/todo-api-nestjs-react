@@ -23,6 +23,18 @@ export class TodosController {
     return this.todos.findAll(userId);
   }
 
+  @Post('purge')
+  async purgeOldDone() {
+    const purged = await this.todos.purgeOldDoneTodos();
+    return { success: true, purged, message: `Purged ${purged}` };
+  }
+
+  @Post('seed-old')
+  async seedOld(@CurrentUser('id') userId: number, @Body('title') title?: string) {
+    const todo = await this.todos.seedOldDoneTodo(userId, title);
+    return { success: true, todo };
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') userId: number) {
     return this.todos.findOne(id, userId);
