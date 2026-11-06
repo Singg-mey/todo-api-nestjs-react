@@ -1,4 +1,17 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: todo-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
@@ -14,5 +27,5 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
+  postgres_data:
   rabbitmq_data:
-
